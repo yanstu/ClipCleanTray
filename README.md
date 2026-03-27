@@ -1,55 +1,73 @@
-# TrimTray
+# 剪贴板净化器
 
-一个轻量级 Windows 托盘工具，自动去除剪贴板文本的首尾空格和换行符。
+剪贴板净化器是一个轻量级 Windows 托盘工具，专门负责在复制文本时做“最后一道清理”。它不再只围绕 trim，而是把常见的复制污染拆成两个可独立切换的规则：清理首尾空白、转换为纯文本。
 
-## 功能特性
+内部英文项目名已更新为 `ClipCleanTray`，软件对外显示名称统一为“剪贴板净化器”。
 
-- **自动处理** - 监听剪贴板变化，自动去除复制文本的首尾空白字符
-- **常驻后台** - 最小化运行，不占用任务栏空间
-- **托盘图标** - 在系统托盘区域显示，右键可操作
-- **开机自启** - 支持设置开机自动启动
-- **超轻量级** - 程序仅 12KB，无需额外运行时
+## 核心能力
+
+- **清理首尾空白**：按需去除复制内容前后的空格、制表符和换行。
+- **转换为纯文本**：去掉富文本、HTML、Word 样式等格式信息，仅保留文本内容。
+- **托盘即时切换**：所有清理规则都可直接在托盘菜单中开关，不再强制默认生效。
+- **常驻后台**：启动后常驻系统托盘，不占任务栏。
+- **开机自启**：支持通过托盘菜单启用或关闭开机启动。
+
+## 适用场景
+
+- 从网页、文档或聊天工具复制内容时，不想把格式一并带进目标应用。
+- 临时需要保留原始文本，想先关闭清理规则，再继续复制。
+- 希望常驻一个小工具，而不是每次手动执行“选择性粘贴为纯文本”。
 
 ## 系统要求
 
 - Windows 10 / 11
-- .NET Framework 4.8（系统自带）
+- .NET Framework 4.8
 
-## 使用方法
+## 使用方式
 
-1. 运行 `TrimTray.exe`
-2. 程序自动最小化到系统托盘
-3. 复制任何文本时，首尾空格/换行会被自动去除
-4. 右键托盘图标可以：
-   - 切换开机自启动
-   - 退出程序
+1. 运行 `ClipCleanTray.exe`
+2. 程序会最小化到系统托盘
+3. 右键托盘图标，可以切换：
+   - `清理首尾空白`
+   - `转换为纯文本`
+   - `开机自启动`
+4. 之后每次复制文本时，程序会按当前启用的规则处理剪贴板内容
+
+默认情况下，两项文本清理规则都会开启；如果你临时需要保留原始内容，可以在托盘菜单里随时关闭。
+
+## 配置存储
+
+- 程序会把托盘开关状态写入 `%AppData%\ClipCleanTray\settings.ini`
+- 重启软件后会自动恢复上一次的开关状态
 
 ## 编译
 
-```bash
-# 使用 MSBuild 编译
-MSBuild TrimTray.csproj -p:Configuration=Release
+```powershell
+MSBuild ClipCleanTray.csproj -p:Configuration=Release
 ```
 
-输出文件位于 `bin\Release\TrimTray.exe`
+输出文件位于 `bin\Release\ClipCleanTray.exe`
 
-## 技术实现
+## 实现概览
 
-- **剪贴板监听** - 使用 Win32 API `AddClipboardFormatListener`
-- **托盘图标** - 使用 WinForms `NotifyIcon`
-- **开机自启** - 通过注册表 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
-- **单实例** - 使用 `Mutex` 互斥锁确保只运行一个实例
+- **剪贴板监听**：使用 Win32 API `AddClipboardFormatListener`
+- **托盘菜单**：使用 WinForms `NotifyIcon` 和 `ContextMenuStrip`
+- **纯文本降级**：检测到非纯文本格式后，回写 Unicode 文本到剪贴板
+- **配置持久化**：使用 `%AppData%` 下的轻量 `settings.ini`
+- **单实例运行**：使用 `Mutex` 防止重复启动
 
 ## 项目结构
 
-```
-TrimTray/
-├── Program.cs                # 程序入口
-├── TrayApplicationContext.cs # 托盘应用上下文
-├── ClipboardMonitor.cs       # 剪贴板监听器
-├── AutoStartManager.cs       # 开机自启动管理
+```text
+ClipCleanTray/
+├── Program.cs
+├── AppInfo.cs
+├── AppSettings.cs
+├── TrayApplicationContext.cs
+├── ClipboardMonitor.cs
+├── AutoStartManager.cs
 └── Resources/
-    └── icon.ico              # 托盘图标
+    └── icon.ico
 ```
 
 ## 许可证

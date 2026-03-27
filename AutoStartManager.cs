@@ -1,7 +1,7 @@
 using System;
 using Microsoft.Win32;
 
-namespace TrimTray
+namespace ClipCleanTray
 {
     /// <summary>
     /// 开机自启动管理器 - 通过注册表管理程序自启动
@@ -9,7 +9,7 @@ namespace TrimTray
     public static class AutoStartManager
     {
         private const string RegistryKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-        private const string AppName = "TrimTray";
+        private const string AppName = AppInfo.AutoStartEntryName;
 
         /// <summary>
         /// 检查是否已启用开机自启动

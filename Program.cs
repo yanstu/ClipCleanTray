@@ -2,13 +2,12 @@ using System;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace TrimTray
+namespace ClipCleanTray
 {
     static class Program
     {
         // 用于确保单实例运行的互斥锁
         private static Mutex _mutex;
-        private const string MutexName = "TrimTray_SingleInstance_Mutex";
 
         /// <summary>
         /// 应用程序的主入口点
@@ -18,12 +17,12 @@ namespace TrimTray
         {
             // 检查是否已有实例在运行
             bool createdNew;
-            _mutex = new Mutex(true, MutexName, out createdNew);
+            _mutex = new Mutex(true, AppInfo.MutexName, out createdNew);
 
             if (!createdNew)
             {
                 // 已有实例在运行，退出
-                MessageBox.Show("TrimTray 已在运行中", "提示",
+                MessageBox.Show(AppInfo.DisplayName + " 已在运行中", "提示",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }

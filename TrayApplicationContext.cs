@@ -1,21 +1,26 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace TrimTray
+namespace ClipCleanTray
 {
     /// <summary>
     /// 托盘应用上下文 - 管理系统托盘图标和菜单
     /// </summary>
     public class TrayApplicationContext : ApplicationContext
     {
+        private readonly AppSettings _settings;
         private NotifyIcon _notifyIcon;
         private ContextMenuStrip _contextMenu;
+        private ToolStripMenuItem _trimWhitespaceMenuItem;
+        private ToolStripMenuItem _plainTextMenuItem;
         private ToolStripMenuItem _autoStartMenuItem;
         private ClipboardMonitor _clipboardMonitor;
 
         public TrayApplicationContext()
         {
+            _settings = AppSettings.Load();
             InitializeComponents();
             StartClipboardMonitor();
         }
@@ -25,10 +30,19 @@ namespace TrimTray
             // 创建右键菜单
             _contextMenu = new ContextMenuStrip();
 
+            _trimWhitespaceMenuItem = new ToolStripMenuItem("清理首尾空白");
+            _trimWhitespaceMenuItem.Click += TrimWhitespaceMenuItem_Click;
+            _contextMenu.Items.Add(_trimWhitespaceMenuItem);
+
+            _plainTextMenuItem = new ToolStripMenuItem("转换为纯文本");
+            _plainTextMenuItem.Click += PlainTextMenuItem_Click;
+            _contextMenu.Items.Add(_plainTextMenuItem);
+
+            _contextMenu.Items.Add(new ToolStripSeparator());
+
             // 开机自启动选项
             _autoStartMenuItem = new ToolStripMenuItem("开机自启动");
             _autoStartMenuItem.Click += AutoStartMenuItem_Click;
-            UpdateAutoStartMenuState();
             _contextMenu.Items.Add(_autoStartMenuItem);
 
             // 分隔线
@@ -43,10 +57,11 @@ namespace TrimTray
             _notifyIcon = new NotifyIcon
             {
                 Icon = CreateDefaultIcon(),
-                Text = "TrimTray - 自动去除剪贴板首尾空格",
                 ContextMenuStrip = _contextMenu,
                 Visible = true
             };
+            UpdateMenuStates();
+            UpdateNotifyIconText();
 
             // 双击托盘图标也显示菜单
             _notifyIcon.DoubleClick += (s, e) => _contextMenu.Show(Cursor.Position);
@@ -54,18 +69,59 @@ namespace TrimTray
 
         private void StartClipboardMonitor()
         {
-            _clipboardMonitor = new ClipboardMonitor();
+            _clipboardMonitor = new ClipboardMonitor(_settings);
         }
 
-        private void UpdateAutoStartMenuState()
+        private void UpdateMenuStates()
         {
+            _trimWhitespaceMenuItem.Checked = _settings.TrimBoundaryWhitespace;
+            _plainTextMenuItem.Checked = _settings.PlainTextOnly;
             _autoStartMenuItem.Checked = AutoStartManager.IsAutoStartEnabled;
+        }
+
+        private void UpdateNotifyIconText()
+        {
+            var enabledFeatures = new List<string>();
+            if (_settings.TrimBoundaryWhitespace)
+            {
+                enabledFeatures.Add("首尾空白");
+            }
+
+            if (_settings.PlainTextOnly)
+            {
+                enabledFeatures.Add("纯文本");
+            }
+
+            string statusText = enabledFeatures.Count == 0
+                ? "未启用清理规则"
+                : "已启用" + string.Join("、", enabledFeatures);
+
+            string trayText = AppInfo.DisplayName + " - " + statusText;
+            _notifyIcon.Text = trayText.Length <= 63 ? trayText : AppInfo.DisplayName;
+        }
+
+        private void ToggleProcessingOption(Action<AppSettings> toggleAction)
+        {
+            toggleAction(_settings);
+            _settings.Save();
+            UpdateMenuStates();
+            UpdateNotifyIconText();
+        }
+
+        private void TrimWhitespaceMenuItem_Click(object sender, EventArgs e)
+        {
+            ToggleProcessingOption(settings => settings.TrimBoundaryWhitespace = !settings.TrimBoundaryWhitespace);
+        }
+
+        private void PlainTextMenuItem_Click(object sender, EventArgs e)
+        {
+            ToggleProcessingOption(settings => settings.PlainTextOnly = !settings.PlainTextOnly);
         }
 
         private void AutoStartMenuItem_Click(object sender, EventArgs e)
         {
             AutoStartManager.Toggle();
-            UpdateAutoStartMenuState();
+            UpdateMenuStates();
         }
 
         private void ExitMenuItem_Click(object sender, EventArgs e)
@@ -93,7 +149,7 @@ namespace TrimTray
             try
             {
                 var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-                using (var stream = assembly.GetManifestResourceStream("TrimTray.Resources.icon.ico"))
+                using (var stream = assembly.GetManifestResourceStream(AppInfo.IconResourceName))
                 {
                     if (stream != null)
                     {
